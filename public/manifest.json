@@ -1,0 +1,16 @@
+{
+    "name": "Doc Studio",
+    "short_name": "DocStudio",
+    "description": "Retro-modern professional document editor",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1a1a2e",
+    "theme_color": "#c8a84b",
+    "icons": [
+        {
+            "src": "/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
