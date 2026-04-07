@@ -32,13 +32,19 @@ export default function Editor() {
         return () => document.removeEventListener('keydown', handler);
     }, [activeDoc]);
 
+    const updateNativeTextarea = (ta, newText) => {
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+        nativeInputValueSetter.call(ta, newText);
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
     const boldSelection = () => {
         const ta = document.getElementById('main-editor');
         if (!ta) return;
         const { selectionStart: s, selectionEnd: e } = ta;
         const selected = ta.value.slice(s, e);
-        const newText = ta.value.slice(0, s) + '**' + selected + '**' + ta.value.slice(e);
-        updateDocument({ content: newText });
+        updateNativeTextarea(ta, ta.value.slice(0, s) + '**' + selected + '**' + ta.value.slice(e));
+        requestAnimationFrame(() => ta.setSelectionRange(s + 2, s + 2 + selected.length));
     };
 
     const italicSelection = () => {
@@ -46,8 +52,8 @@ export default function Editor() {
         if (!ta) return;
         const { selectionStart: s, selectionEnd: e } = ta;
         const selected = ta.value.slice(s, e);
-        const newText = ta.value.slice(0, s) + '*' + selected + '*' + ta.value.slice(e);
-        updateDocument({ content: newText });
+        updateNativeTextarea(ta, ta.value.slice(0, s) + '*' + selected + '*' + ta.value.slice(e));
+        requestAnimationFrame(() => ta.setSelectionRange(s + 1, s + 1 + selected.length));
     };
 
     const handleChange = useCallback((e) => {

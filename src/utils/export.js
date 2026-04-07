@@ -1,5 +1,7 @@
 // Export utilities for Doc Studio
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { parseMarkdown } from '../components/MarkdownRenderer.jsx';
 
 // ── Markdown export ────────────────────────────────────────────
 export function exportMarkdown(doc) {
@@ -23,60 +25,86 @@ export function exportText(doc) {
     downloadBlob(blob, `${sanitizeFilename(doc.title)}.txt`);
 }
 
+// ── HTML Preview Export ─────────────────────────────────────────
+export function exportHTML(doc) {
+    const htmlSnippet = parseMarkdown(doc.content || '');
+    const title = doc.title || 'Untitled';
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${title}</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; line-height: 1.6; color: #333; background: #fff; }
+  pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+  code { font-family: monospace; background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+  pre code { padding: 0; background: transparent; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background-color: #f2f2f2; }
+  blockquote { border-left: 4px solid #ddd; padding-left: 15px; color: #666; margin-left: 0; }
+  img { max-width: 100%; height: auto; }
+  ul.task-list { list-style: none; padding-left: 0; }
+  .task-list li { display: flex; align-items: start; gap: 8px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+${htmlSnippet}
+</body>
+</html>`;
+    const blob = new Blob([fullHtml], { type: 'text/html' });
+    downloadBlob(blob, `${sanitizeFilename(title)}.html`);
+}
+
 // ── PDF export ─────────────────────────────────────────────────
-export function exportPDF(doc) {
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const margin = 60;
-    const maxWidth = pageWidth - margin * 2;
-    let y = margin;
+export async function exportPDF(doc) {
+    const htmlSnippet = parseMarkdown(doc.content || '');
+    const container = document.createElement('div');
+    // Ensure styles to accurately render pdf canvas representation
+    container.innerHTML = `
+        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; background: #fff; width: 800px; padding: 40px; line-height: 1.6;">
+            ${htmlSnippet}
+        </div>
+    `;
+    // We must apply scoped styles to the container so canvas picks it up
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #pdf-temp-container pre { background: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; }
+        #pdf-temp-container code { font-family: monospace; }
+        #pdf-temp-container table { border-collapse: collapse; width: 100%; }
+        #pdf-temp-container th, #pdf-temp-container td { border: 1px solid #ddd; padding: 8px; }
+        #pdf-temp-container blockquote { border-left: 4px solid #ddd; padding-left: 15px; color: #666; margin-left: 0; }
+        #pdf-temp-container img { max-width: 100%; }
+    `;
+    container.id = 'pdf-temp-container';
+    container.appendChild(style);
+    
+    // It needs to be in the DOM to render
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    document.body.appendChild(container);
 
-    const lines = (doc.content || '').split('\n');
-
-    pdf.setFont('helvetica');
-
-    for (const line of lines) {
-        if (y > pdf.internal.pageSize.getHeight() - margin) {
-            pdf.addPage();
-            y = margin;
-        }
-
-        if (line.startsWith('# ')) {
-            pdf.setFontSize(22);
-            pdf.setFont('helvetica', 'bold');
-            const text = line.replace(/^# /, '');
-            pdf.text(text, margin, y);
-            y += 30;
-        } else if (line.startsWith('## ')) {
-            pdf.setFontSize(16);
-            pdf.setFont('helvetica', 'bold');
-            const text = line.replace(/^## /, '');
-            pdf.text(text, margin, y);
-            y += 22;
-        } else if (line.startsWith('### ')) {
-            pdf.setFontSize(13);
-            pdf.setFont('helvetica', 'bold');
-            const text = line.replace(/^### /, '');
-            pdf.text(text, margin, y);
-            y += 18;
-        } else if (line.startsWith('---')) {
-            pdf.setDrawColor(180, 180, 180);
-            pdf.line(margin, y, pageWidth - margin, y);
-            y += 12;
-        } else if (line.trim() === '') {
-            y += 8;
-        } else {
-            pdf.setFontSize(11);
-            pdf.setFont('helvetica', 'normal');
-            // Handle bold via **text**
-            const cleaned = line.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`(.+?)`/g, '$1');
-            const wrapped = pdf.splitTextToSize(cleaned, maxWidth);
-            pdf.text(wrapped, margin, y);
-            y += wrapped.length * 14 + 2;
-        }
+    try {
+        const canvas = await html2canvas(container.firstElementChild, { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            windowWidth: 800
+        });
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${sanitizeFilename(doc.title)}.pdf`);
+    } catch (err) {
+        console.error('PDF export failed:', err);
+    } finally {
+        document.body.removeChild(container);
     }
-
-    pdf.save(`${sanitizeFilename(doc.title)}.pdf`);
 }
 
 // ── Import from file ───────────────────────────────────────────

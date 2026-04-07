@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useDoc } from '../contexts/DocContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { wordCount, charCount } from '../utils/helpers.js';
-import { exportMarkdown, exportText, exportPDF, importFromFile } from '../utils/export.js';
+import { exportMarkdown, exportText, exportPDF, exportHTML, importFromFile } from '../utils/export.js';
 import {
     Bold, Italic, Code, Heading1, Heading2, Heading3,
     List, ListOrdered, Quote, Minus, Table,
     Download, Upload, Clock, Eye, Edit3, MoreHorizontal,
+    CheckSquare, Link, Image
 } from 'lucide-react';
 
 export default function EditorToolbar({ mode, onModeChange, content }) {
@@ -23,18 +24,25 @@ export default function EditorToolbar({ mode, onModeChange, content }) {
         return () => document.removeEventListener('mousedown', close);
     }, []);
 
+    const triggerInputEvent = (ta, newValue, selectionStart, selectionEnd) => {
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+        nativeInputValueSetter.call(ta, newValue);
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        requestAnimationFrame(() => {
+            ta.focus();
+            if (selectionStart !== undefined) {
+                ta.setSelectionRange(selectionStart, selectionEnd ?? selectionStart);
+            }
+        });
+    };
+
     const insert = (prefix, suffix = '') => {
         const ta = document.getElementById('main-editor');
         if (!ta) return;
         const { selectionStart: s, selectionEnd: e } = ta;
         const selected = ta.value.slice(s, e);
         const newText = ta.value.slice(0, s) + prefix + selected + suffix + ta.value.slice(e);
-        updateDocument({ content: newText });
-        // Re-focus with caret
-        requestAnimationFrame(() => {
-            ta.focus();
-            ta.setSelectionRange(s + prefix.length, s + prefix.length + selected.length);
-        });
+        triggerInputEvent(ta, newText, s + prefix.length, s + prefix.length + selected.length);
     };
 
     const insertLine = (prefix) => {
@@ -47,8 +55,7 @@ export default function EditorToolbar({ mode, onModeChange, content }) {
         const line = ta.value.slice(s, end);
         const newLine = line.startsWith(prefix) ? line.slice(prefix.length) : prefix + line;
         const newText = ta.value.slice(0, s) + newLine + ta.value.slice(end);
-        updateDocument({ content: newText });
-        requestAnimationFrame(() => ta.focus());
+        triggerInputEvent(ta, newText);
     };
 
     const insertAtCursor = (text) => {
@@ -56,11 +63,7 @@ export default function EditorToolbar({ mode, onModeChange, content }) {
         if (!ta) return;
         const s = ta.selectionStart;
         const newText = ta.value.slice(0, s) + text + ta.value.slice(s);
-        updateDocument({ content: newText });
-        requestAnimationFrame(() => {
-            ta.focus();
-            ta.setSelectionRange(s + text.length, s + text.length);
-        });
+        triggerInputEvent(ta, newText, s + text.length);
     };
 
     const handleExport = async (type) => {
@@ -70,6 +73,7 @@ export default function EditorToolbar({ mode, onModeChange, content }) {
             if (type === 'md') exportMarkdown(activeDoc);
             else if (type === 'txt') exportText(activeDoc);
             else if (type === 'pdf') exportPDF(activeDoc);
+            else if (type === 'html') exportHTML(activeDoc);
             addToast(`Exported as ${type.toUpperCase()}`, 'success');
         } catch (err) {
             addToast('Export failed', 'error');
@@ -124,11 +128,24 @@ export default function EditorToolbar({ mode, onModeChange, content }) {
             <button className="toolbar-btn" onClick={() => insertLine('1. ')} title="Numbered list">
                 <ListOrdered size={14} />
             </button>
+            <button className="toolbar-btn" onClick={() => insertLine('- [ ] ')} title="Checklist">
+                <CheckSquare size={14} />
+            </button>
             <button className="toolbar-btn" onClick={() => insertLine('> ')} title="Blockquote">
                 <Quote size={14} />
             </button>
             <button className="toolbar-btn" onClick={() => insertLine('---')} title="Horizontal rule">
                 <Minus size={14} />
+            </button>
+
+            <div className="toolbar-divider" />
+
+            {/* Links and Media */}
+            <button className="toolbar-btn" onClick={() => insert('[', '](url)')} title="Insert link">
+                <Link size={14} />
+            </button>
+            <button className="toolbar-btn" onClick={() => insert('![', '](image-url)')} title="Insert image">
+                <Image size={14} />
             </button>
 
             <div className="toolbar-divider" />
@@ -192,7 +209,8 @@ export default function EditorToolbar({ mode, onModeChange, content }) {
                         <div className="dropdown__menu" style={{ right: 0, minWidth: 140 }}>
                             <button className="dropdown__item" onClick={() => handleExport('md')}>📄 Markdown (.md)</button>
                             <button className="dropdown__item" onClick={() => handleExport('txt')}>📝 Plain Text (.txt)</button>
-                            <button className="dropdown__item" onClick={() => handleExport('pdf')}>🖨️ PDF (.pdf)</button>
+                            <button className="dropdown__item" onClick={() => handleExport('html')}>🌐 HTML Preview (.html)</button>
+                            <button className="dropdown__item" onClick={() => handleExport('pdf')}>🖨️ PDF Preview (.pdf)</button>
                         </div>
                     )}
                 </div>

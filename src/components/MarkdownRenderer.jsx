@@ -11,7 +11,7 @@ export default function MarkdownRenderer({ content }) {
     );
 }
 
-function parseMarkdown(md) {
+export function parseMarkdown(md) {
     let html = md
         // Escape HTML entities (security)
         .replace(/&/g, '&amp;')
@@ -65,8 +65,14 @@ function parseMarkdown(md) {
         else if (/^> /.test(line)) { closeList(); result.push(`<blockquote>${inlineFormat(line.slice(2))}</blockquote>`); }
         // Unordered list
         else if (/^- /.test(line) || /^\* /.test(line)) {
-            if (!inList || listType !== 'ul') { closeList(); result.push('<ul>'); inList = true; listType = 'ul'; }
-            result.push(`<li>${inlineFormat(line.slice(2))}</li>`);
+            if (!inList || listType !== 'ul') { closeList(); result.push('<ul style="list-style-type: disc; padding-left: 20px;">'); inList = true; listType = 'ul'; }
+            let itemText = line.slice(2);
+            if (itemText.startsWith('[ ] ')) {
+                itemText = `<input type="checkbox" disabled /> ${itemText.slice(4)}`;
+            } else if (itemText.startsWith('[x] ') || itemText.startsWith('[X] ')) {
+                itemText = `<input type="checkbox" disabled checked /> ${itemText.slice(4)}`;
+            }
+            result.push(`<li>${inlineFormat(itemText)}</li>`);
         }
         // Ordered list
         else if (/^\d+\. /.test(line)) {
@@ -106,6 +112,8 @@ function inlineFormat(text) {
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         // Inline code
         .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // Image
+        .replace(/!\[(.*?)\]\((.+?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%;" />')
         // Link
         .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         // Strikethrough
