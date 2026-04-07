@@ -2,8 +2,8 @@ import { useState, useRef } from 'react';
 import { useDoc } from '../contexts/DocContext.jsx';
 import { Menu, Clock, PanelLeft } from 'lucide-react';
 
-export default function TitleBar({ sidebarOpen, onToggleSidebar, onVersionHistory }) {
-    const { activeDoc, saving, updateDocument } = useDoc();
+export default function TitleBar({ sidebarOpen, onToggleSidebar, onVersionHistory, onGoHome }) {
+    const { activeDoc, saving, updateDocument, openDocument } = useDoc();
     const [editing, setEditing] = useState(false);
     const inputRef = useRef(null);
 
@@ -21,7 +21,12 @@ export default function TitleBar({ sidebarOpen, onToggleSidebar, onVersionHistor
     return (
         <div className="titlebar">
             {/* Logo */}
-            <div className="titlebar__logo">
+            <div 
+                className="titlebar__logo" 
+                onClick={() => { openDocument(null); if (onGoHome) onGoHome(); }} 
+                style={{ cursor: 'pointer' }} 
+                title="Back to Dashboard"
+            >
                 <svg width="22" height="22" viewBox="0 0 32 32" className="titlebar__logo-icon">
                     <rect width="32" height="32" rx="3" fill="#c8a84b" />
                     <rect x="6" y="5" width="14" height="18" rx="1" fill="#0e0e1a" />

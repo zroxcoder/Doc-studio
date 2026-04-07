@@ -552,8 +552,9 @@ input, textarea, select {
   padding: 0 var(--space-md);
   gap: 2px;
   flex-shrink: 0;
-  overflow-x: auto;
+  overflow: visible;
 }
+
 
 .toolbar-divider {
   width: 1px;

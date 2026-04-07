@@ -8,6 +8,7 @@ import WelcomeScreen from './components/WelcomeScreen.jsx';
 import TemplateGallery from './components/TemplateGallery.jsx';
 import VersionHistory from './components/VersionHistory.jsx';
 import FolderModal from './components/FolderModal.jsx';
+import { AboutPage, HelpPage, ContactPage } from './components/StaticPages.jsx';
 
 export default function App() {
   const { activeDoc, activeDocId, createDocument, loading } = useDoc();
@@ -17,6 +18,7 @@ export default function App() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
+  const [currentPage, setCurrentPage] = useState('welcome');
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function App() {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(v => !v)}
         onVersionHistory={() => setShowVersions(true)}
+        onGoHome={() => setCurrentPage('welcome')}
       />
 
       {/* Main layout */}
@@ -84,6 +87,8 @@ export default function App() {
           <Sidebar
             onNewDoc={handleNewDoc}
             onNewFolder={() => setShowNewFolder(true)}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
           />
         )}
 
@@ -92,10 +97,13 @@ export default function App() {
           <Editor />
         ) : (
           <div className="main-content">
+            {currentPage === 'about' ? <AboutPage /> :
+             currentPage === 'help' ? <HelpPage /> :
+             currentPage === 'contact' ? <ContactPage /> :
             <WelcomeScreen
               onNewDoc={handleNewDoc}
               onOpenTemplates={() => setShowTemplates(true)}
-            />
+            />}
           </div>
         )}
       </div>

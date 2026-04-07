@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import { formatRelative } from '../utils/helpers.js';
 import { Search, Plus, Folder, FileText, Trash2, Copy, ChevronDown, ChevronRight, Tag } from 'lucide-react';
 
-export default function Sidebar({ onNewDoc, onNewFolder }) {
+export default function Sidebar({ onNewDoc, onNewFolder, currentPage, setCurrentPage }) {
     const {
         filteredDocs, folders, activeDocId, search, setSearch,
         activeFolder, setActiveFolder, openDocument, removeDocument, duplicateDocument,
@@ -151,8 +151,21 @@ export default function Sidebar({ onNewDoc, onNewFolder }) {
                 </div>
             </div>
 
+            {/* Pages Navigation */}
+            <div style={{ padding: '12px 16px 4px', display: 'flex', gap: '16px', fontSize: '0.75rem', justifyContent: 'center', borderTop: '1px solid var(--border-subtle)' }}>
+               <span 
+                   style={{ cursor: 'pointer', fontWeight: 500, color: currentPage === 'about' && !activeDocId ? 'var(--accent-gold)' : 'var(--text-muted)' }} 
+                   onClick={() => { setCurrentPage('about'); openDocument(null); }}>About</span>
+               <span 
+                   style={{ cursor: 'pointer', fontWeight: 500, color: currentPage === 'help' && !activeDocId ? 'var(--accent-gold)' : 'var(--text-muted)' }} 
+                   onClick={() => { setCurrentPage('help'); openDocument(null); }}>Help</span>
+               <span 
+                   style={{ cursor: 'pointer', fontWeight: 500, color: currentPage === 'contact' && !activeDocId ? 'var(--accent-gold)' : 'var(--text-muted)' }} 
+                   onClick={() => { setCurrentPage('contact'); openDocument(null); }}>Contact</span>
+            </div>
+
             {/* Footer */}
-            <div className="sidebar__footer">
+            <div className="sidebar__footer" style={{ borderTop: 'none' }}>
                 <button className="btn btn-secondary btn-sm" onClick={onNewDoc} style={{ flex: 1 }}>
                     <Plus size={12} /> New Doc
                 </button>
